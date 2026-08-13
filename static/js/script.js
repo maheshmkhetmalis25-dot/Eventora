@@ -1,0 +1,1 @@
+document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".toast").forEach(t=>setTimeout(()=>t.remove(),4500));const nav=document.querySelector(".navbar");window.addEventListener("scroll",()=>{if(nav)nav.style.boxShadow=scrollY>20?"0 8px 30px rgba(0,0,0,.06)":"none"});});

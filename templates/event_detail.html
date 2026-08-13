@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ event.title }} — Eventora
+{% endblock %}
+
+{% block content %}
+
+<section class="event-detail-page">
+
+    <!-- EVENT BANNER -->
+
+    <div class="event-detail-hero">
+
+        <img
+            src="{{ url_for(
+                'static',
+                filename='images/' ~ event.banner_image
+            ) }}"
+            alt="{{ event.title }}"
+            onerror="this.src='{{ url_for('static', filename='images/event-tech.svg') }}'"
+        >
+
+
+        <div class="detail-overlay">
+
+            <span class="category">
+                {{ event.category }}
+            </span>
+
+
+            <h1>
+                {{ event.title }}
+            </h1>
+
+
+            <p>
+
+                📍 {{ event.venue }}
+
+                &nbsp; • &nbsp;
+
+                🕐 {{ event.event_time|time12 }}
+
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <!-- DETAILS -->
+
+    <div class="detail-layout">
+
+        <div class="detail-main">
+
+            <h2>
+                About this event
+            </h2>
+
+
+            <p class="event-description">
+                {{ event.description }}
+            </p>
+
+
+            <div class="detail-info-grid">
+
+                <div class="detail-info-card">
+
+                    <span>
+                        📅 Date
+                    </span>
+
+                    <strong>
+                        {{ event.event_date.strftime('%d %B %Y') }}
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-info-card">
+
+                    <span>
+                        🕐 Time
+                    </span>
+
+                    <strong>
+                        {{ event.event_time|time12 }}
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-info-card">
+
+                    <span>
+                        📍 Venue
+                    </span>
+
+                    <strong>
+                        {{ event.venue }}
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-info-card">
+
+                    <span>
+                        🎟️ Seats
+                    </span>
+
+                    <strong>
+
+                        {% if event.seats_left > 0 %}
+
+                            {{ event.seats_left }}
+                            seats available
+
+                        {% else %}
+
+                            Sold Out
+
+                        {% endif %}
+
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+            {% if rating and rating.review_count > 0 %}
+
+                <div class="rating-box">
+
+                    <strong>
+                        ⭐
+                        {{ "%.1f"|format(rating.avg_rating) }}
+                    </strong>
+
+                    <span>
+                        {{ rating.review_count }}
+                        reviews
+                    </span>
+
+                </div>
+
+            {% endif %}
+
+        </div>
+
+
+        <!-- REGISTRATION CARD -->
+
+        <aside class="registration-card">
+
+            <span class="eyebrow">
+                EVENT PASS
+            </span>
+
+
+            <h2>
+
+                {% if event.price == 0 %}
+
+                    Free Entry
+
+                {% else %}
+
+                    ₹{{ "%.0f"|format(event.price) }}
+
+                {% endif %}
+
+            </h2>
+
+
+            <p>
+                Secure your place before registration closes.
+            </p>
+
+
+            <div class="registration-info">
+
+                <div>
+
+                    <span>
+                        Registration deadline
+                    </span>
+
+                    <strong>
+
+                        {% if event.registration_deadline %}
+
+                            {{ event.registration_deadline.strftime('%d %b %Y') }}
+
+                        {% else %}
+
+                            Until seats fill
+
+                        {% endif %}
+
+                    </strong>
+
+                </div>
+
+
+                <div>
+
+                    <span>
+                        Available seats
+                    </span>
+
+                    <strong>
+                        {{ event.seats_left }}
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+            {% if already_registered %}
+
+                <div class="already-registered">
+
+                    ✓ You are already registered
+
+                </div>
+
+
+                <a
+                    href="{{ url_for('dashboard') }}"
+                    class="btn btn-primary full"
+                >
+                    View My Ticket →
+                </a>
+
+
+            {% elif event.seats_left <= 0 %}
+
+                <button
+                    class="btn btn-secondary full"
+                    disabled
+                >
+                    Sold Out
+                </button>
+
+
+            {% elif logged_in %}
+
+                <form
+                    method="POST"
+                    action="{{ url_for(
+                        'register_event',
+                        event_id=event.id
+                    ) }}"
+                >
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary full"
+                    >
+                        Register Now →
+                    </button>
+
+                </form>
+
+
+            {% else %}
+
+                <a
+                    href="{{ url_for(
+                        'login',
+                        next=url_for(
+                            'event_detail',
+                            event_id=event.id
+                        )
+                    ) }}"
+                    class="btn btn-primary full"
+                >
+                    Login to Register →
+                </a>
+
+            {% endif %}
+
+
+            <p class="secure-note">
+                🔒 Your registration is secure.
+            </p>
+
+        </aside>
+
+    </div>
+
+
+    <!-- FEEDBACK -->
+
+    {% if logged_in and already_registered %}
+
+        <section class="feedback-section">
+
+            <h2>
+                Share your experience
+            </h2>
+
+            <p>
+                Attended this event?
+                Tell us what you thought.
+            </p>
+
+
+            <form
+                method="POST"
+                action="{{ url_for(
+                    'feedback',
+                    event_id=event.id
+                ) }}"
+                class="feedback-form"
+            >
+
+                <label>
+                    Rating
+                </label>
+
+                <select
+                    name="rating"
+                    required
+                >
+
+                    <option value="">
+                        Select rating
+                    </option>
+
+                    <option value="5">
+                        ⭐⭐⭐⭐⭐ Excellent
+                    </option>
+
+                    <option value="4">
+                        ⭐⭐⭐⭐ Very Good
+                    </option>
+
+                    <option value="3">
+                        ⭐⭐⭐ Good
+                    </option>
+
+                    <option value="2">
+                        ⭐⭐ Average
+                    </option>
+
+                    <option value="1">
+                        ⭐ Poor
+                    </option>
+
+                </select>
+
+
+                <label>
+                    Comment
+                </label>
+
+                <textarea
+                    name="comment"
+                    rows="4"
+                    placeholder="Tell us about your experience..."
+                ></textarea>
+
+
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                >
+                    Submit Feedback
+                </button>
+
+            </form>
+
+        </section>
+
+    {% endif %}
+
+</section>
+
+{% endblock %}

@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}Explore Events — Eventora{% endblock %}
+
+{% block content %}
+
+<section class="page-hero">
+
+    <div>
+
+        <span class="eyebrow">
+            DISCOVER
+        </span>
+
+        <h1>
+            Explore Events
+        </h1>
+
+        <p>
+            Find workshops, seminars, cultural programs,
+            sports and exciting experiences.
+        </p>
+
+    </div>
+
+</section>
+
+
+<section class="events-section">
+
+    <div class="events-toolbar">
+
+        <form
+            method="GET"
+            action="{{ url_for('events') }}"
+            class="event-filters"
+        >
+
+            <input
+                type="text"
+                name="q"
+                value="{{ q or '' }}"
+                placeholder="Search events..."
+            >
+
+
+            <select name="category">
+
+                <option value="">
+                    All Categories
+                </option>
+
+                {% for category in categories %}
+
+                    <option
+                        value="{{ category.name }}"
+                        {% if selected_category == category.name %}
+                            selected
+                        {% endif %}
+                    >
+                        {{ category.name }}
+                    </option>
+
+                {% endfor %}
+
+            </select>
+
+
+            <select name="price">
+
+                <option value="">
+                    All Prices
+                </option>
+
+                <option
+                    value="free"
+                    {% if selected_price == 'free' %}
+                        selected
+                    {% endif %}
+                >
+                    Free
+                </option>
+
+                <option
+                    value="paid"
+                    {% if selected_price == 'paid' %}
+                        selected
+                    {% endif %}
+                >
+                    Paid
+                </option>
+
+            </select>
+
+
+            <button
+                type="submit"
+                class="btn btn-primary"
+            >
+                Search
+            </button>
+
+        </form>
+
+    </div>
+
+
+    {% if events %}
+
+        <div class="event-grid">
+
+            {% for event in events %}
+
+                <article class="event-card">
+
+                    <div class="event-image">
+
+                        <img
+                            src="{{ url_for(
+                                'static',
+                                filename='images/' ~ event.banner_image
+                            ) }}"
+                            alt="{{ event.title }}"
+                            onerror="this.src='{{ url_for('static', filename='images/event-tech.svg') }}'"
+                        >
+
+                        <span class="event-category">
+                            {{ event.category }}
+                        </span>
+
+                    </div>
+
+
+                    <div class="event-body">
+
+                        <div class="date-chip">
+
+                            <b>
+                                {{ event.event_date.strftime('%d') }}
+                            </b>
+
+                            <span>
+                                {{ event.event_date.strftime('%b') }}
+                            </span>
+
+                        </div>
+
+
+                        <div class="event-info">
+
+                            <h3>
+                                {{ event.title }}
+                            </h3>
+
+
+                            <p>
+                                📍 {{ event.venue }}
+                            </p>
+
+
+                            <p>
+                                🕐 {{ event.event_time|time12 }}
+                            </p>
+
+
+                            <div class="event-meta">
+
+                                {% if event.price == 0 %}
+
+                                    <strong>
+                                        FREE
+                                    </strong>
+
+                                {% else %}
+
+                                    <strong>
+                                        ₹{{ "%.0f"|format(event.price) }}
+                                    </strong>
+
+                                {% endif %}
+
+
+                                <span>
+                                    {{ event.seats_available }} seats left
+                                </span>
+
+                            </div>
+
+
+                            <a
+                                href="{{ url_for(
+                                    'event_detail',
+                                    event_id=event.id
+                                ) }}"
+                                class="btn btn-primary"
+                            >
+                                More Details →
+                            </a>
+
+                        </div>
+
+                    </div>
+
+                </article>
+
+            {% endfor %}
+
+        </div>
+
+    {% else %}
+
+        <div class="empty-state">
+
+            <h2>
+                No events found
+            </h2>
+
+            <p>
+                Try changing your search or category filter.
+            </p>
+
+            <a
+                href="{{ url_for('events') }}"
+                class="btn btn-primary"
+            >
+                View All Events
+            </a>
+
+        </div>
+
+    {% endif %}
+
+</section>
+
+{% endblock %}

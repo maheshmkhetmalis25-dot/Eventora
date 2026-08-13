@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard — Eventora{% endblock %}
+{% block content %}
+<section class="admin-head"><div><span class="eyebrow">CONTROL CENTER</span><h1>Good to see you, {{ session_user }}.</h1><p>Monitor events, people and performance at a glance.</p></div><a class="btn btn-primary" href="{{ url_for('create_event') }}">+ Create event</a></section>
+<section class="stats-grid">
+<div class="stat-card"><span>USERS</span><b>{{ total_users }}</b><small>Registered accounts</small></div>
+<div class="stat-card"><span>EVENTS</span><b>{{ total_events }}</b><small>Total created</small></div>
+<div class="stat-card"><span>REGISTRATIONS</span><b>{{ total_registrations }}</b><small>Confirmed bookings</small></div>
+<div class="stat-card accent"><span>REVENUE</span><b>₹{{ '%.0f'|format(revenue or 0) }}</b><small>Successful payments</small></div>
+</section>
+<section class="admin-charts">
+<div class="panel"><div class="panel-head"><h2>Registrations by month</h2></div><canvas id="monthlyChart"></canvas></div>
+<div class="panel"><div class="panel-head"><h2>Events by category</h2></div><canvas id="categoryChart"></canvas></div>
+</section>
+<section class="panel table-panel"><div class="panel-head"><h2>Event management</h2><span>{{ events|length }} events</span></div>
+<div class="table-scroll"><table><thead><tr><th>Event</th><th>Date</th><th>Bookings</th><th>Price</th><th>Status</th><th>Action</th></tr></thead><tbody>
+{% for e in events %}<tr><td><b>{{ e.title }}</b><small>{{ e.category }} • {{ e.venue }}</small></td><td>{{ e.event_date.strftime('%d %b %Y') }}</td><td>{{ e.registered_count }}/{{ e.total_seats }}</td><td>₹{{ '%.0f'|format(e.price) }}</td><td><span class="status">{{ e.status|upper }}</span></td><td><form method="post" action="{{ url_for('delete_event', event_id=e.id) }}" onsubmit="return confirm('Cancel this event?')"><button class="table-btn">Cancel</button></form></td></tr>{% endfor %}
+</tbody></table></div></section>
+<section class="panel table-panel"><div class="panel-head"><h2>Recent users</h2></div><div class="table-scroll"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th></tr></thead><tbody>{% for u in users %}<tr><td><b>{{ u.name }}</b></td><td>{{ u.email }}</td><td><span class="role">{{ u.role }}</span></td><td>{{ u.created_at.strftime('%d %b %Y') }}</td></tr>{% endfor %}</tbody></table></div></section>
+<script>
+fetch("{{ url_for('chart_data') }}").then(r=>r.json()).then(data=>{
+new Chart(document.getElementById('monthlyChart'),{type:'line',data:{labels:data.monthly.map(x=>x.month),datasets:[{label:'Registrations',data:data.monthly.map(x=>x.total),tension:.4,fill:true}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+new Chart(document.getElementById('categoryChart'),{type:'doughnut',data:{labels:data.categories.map(x=>x.category),datasets:[{data:data.categories.map(x=>x.total)}]},options:{responsive:true,plugins:{legend:{position:'bottom'}}}});
+});
+</script>
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}
+My Dashboard — Eventora
+{% endblock %}
+
+{% block content %}
+
+<section class="dashboard-page">
+
+    <div class="dashboard-header">
+
+        <div>
+
+            <span class="eyebrow">
+                MY EVENTORA
+            </span>
+
+            <h1>
+                Welcome, {{ session_user }}
+            </h1>
+
+            <p>
+                Manage your registrations and event tickets.
+            </p>
+
+        </div>
+
+
+        <a
+            href="{{ url_for('events') }}"
+            class="btn btn-primary"
+        >
+            Explore Events →
+        </a>
+
+    </div>
+
+
+    <section class="dashboard-section">
+
+        <h2>
+            My Registered Events
+        </h2>
+
+
+        {% if registrations %}
+
+            <div class="ticket-grid">
+
+                {% for registration in registrations %}
+
+                    <article class="ticket-card">
+
+                        <div class="ticket-image">
+
+                            <img
+                                src="{{ url_for(
+                                    'static',
+                                    filename='images/' ~ registration.banner_image
+                                ) }}"
+                                alt="{{ registration.title }}"
+                            >
+
+                        </div>
+
+
+                        <div class="ticket-content">
+
+                            <span class="event-category">
+                                {{ registration.category }}
+                            </span>
+
+
+                            <h3>
+                                {{ registration.title }}
+                            </h3>
+
+
+                            <p>
+                                📅
+                                {{ registration.event_date.strftime('%d %B %Y') }}
+                            </p>
+
+
+                            <p>
+                                🕐
+                                {{ registration.event_time|time12 }}
+                            </p>
+
+
+                            <p>
+                                📍
+                                {{ registration.venue }}
+                            </p>
+
+
+                            <div class="ticket-id">
+
+                                <span>
+                                    Ticket ID
+                                </span>
+
+                                <strong>
+                                    {{ registration.ticket_id }}
+                                </strong>
+
+                            </div>
+
+
+                            <span class="ticket-status">
+
+                                ✓ Confirmed
+
+                            </span>
+
+                        </div>
+
+                    </article>
+
+                {% endfor %}
+
+            </div>
+
+        {% else %}
+
+            <div class="empty-state">
+
+                <h2>
+                    No registrations yet
+                </h2>
+
+                <p>
+                    Discover an event and reserve your place.
+                </p>
+
+                <a
+                    href="{{ url_for('events') }}"
+                    class="btn btn-primary"
+                >
+                    Explore Events →
+                </a>
+
+            </div>
+
+        {% endif %}
+
+    </section>
+
+</section>
+
+{% endblock %}

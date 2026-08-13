@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Eventora — Discover memorable events{% endblock %}
+{% block content %}
+<section class="hero">
+    <div class="hero-copy">
+        <span class="eyebrow">EVENT MANAGEMENT, REIMAGINED</span>
+        <h1>Make every event<br><em>worth remembering.</em></h1>
+        <p>Discover workshops, cultural nights, tech summits, sports days and unforgettable experiences — all in one beautiful place.</p>
+        <div class="hero-actions">
+            <a class="btn btn-primary" href="{{ url_for('events') }}">Explore Events <span>→</span></a>
+            <a class="btn btn-ghost" href="{{ url_for('register') }}">Create account</a>
+        </div>
+        <div class="trust-row"><span>✓ Easy registration</span><span>✓ Digital tickets</span><span>✓ Live seat availability</span></div>
+    </div>
+    <div class="hero-art">
+        <div class="hero-card card-back"></div>
+        <div class="hero-card main-photo"><img src="{{ url_for('static', filename='images/hero-events.jpeg') }}" alt="People enjoying an event"></div>
+        <div class="floating-card"><b>2.4k+</b><span>Happy participants</span></div>
+        <div class="floating-date"><b>08</b><span>AUG<br>2026</span></div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="section-heading"><div><span class="eyebrow">CURATED FOR YOU</span><h2>Upcoming experiences</h2></div><a class="text-link" href="{{ url_for('events') }}">View all →</a></div>
+    <div class="event-grid">
+        {% for event in events %}
+        <article class="event-card">
+            <div class="event-image"><img src="{{ url_for('static', filename='images/' + event.banner_image) }}" alt="{{ event.title }}"><span class="category">{{ event.category }}</span></div>
+            <div class="event-body">
+                <div class="date-chip"><b>{{ event.event_date.strftime('%d') }}</b><span>{{ event.event_date.strftime('%b') }}</span></div>
+                <div><h3>{{ event.title }}</h3><p>📍 {{ event.venue }}</p><p>👥 {{ event.registered_count }}/{{ event.total_seats }} booked</p></div>
+            </div>
+            <div class="event-footer"><span>{% if event.price == 0 %}<strong>FREE</strong>{% else %}<strong>₹{{ '%.0f'|format(event.price) }}</strong>{% endif %}</span><a href="{{ url_for('event_detail', event_id=event.id) }}">Details →</a></div>
+        </article>
+        {% else %}
+        <div class="empty">No upcoming events yet. Admin can publish the first one from the dashboard.</div>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="feature-band">
+    <div><span class="eyebrow">ONE PLATFORM</span><h2>From first idea to final applause.</h2><p>Eventora brings event discovery, registration, tickets, attendance and feedback together.</p></div>
+    <div class="feature-list">
+        <div><span>01</span><b>Discover</b><small>Search and filter events instantly.</small></div>
+        <div><span>02</span><b>Register</b><small>Reserve your seat in seconds.</small></div>
+        <div><span>03</span><b>Attend</b><small>Use your digital ticket at the venue.</small></div>
+    </div>
+</section>
+{% endblock %}

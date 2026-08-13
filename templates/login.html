@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block title %}Login — Eventora{% endblock %}
+{% block content %}
+<section class="auth-wrap"><div class="auth-art"><img src="{{ url_for('static', filename='images/login-event.svg') }}"><span>YOUR NEXT EXPERIENCE<br>STARTS HERE.</span></div><div class="auth-card"><span class="eyebrow">WELCOME BACK</span><h1>Sign in</h1><p>Access your tickets, events and dashboard.</p><form method="post"><label>Email<input type="email" name="email" required placeholder="you@example.com"></label><label>Password<input type="password" name="password" required placeholder="••••••••"></label><button class="btn btn-primary full">Sign in →</button></form><p class="auth-switch">New here? <a href="{{ url_for('register') }}">Create an account</a></p></div></section>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Create Event — Eventora{% endblock %}
+{% block content %}
+<section class="form-page"><div class="page-head left"><span class="eyebrow">ADMIN • EVENT STUDIO</span><h1>Create an event</h1><p>Give your next experience a great first impression.</p></div>
+<form method="post" class="large-form">
+<div class="form-section"><h2>Event basics</h2><div class="form-grid"><label>Title<input name="title" required placeholder="e.g. Future of AI Summit"></label><label>Category<select name="category" required><option>Technical</option><option>Cultural</option><option>Workshop</option><option>Seminar</option><option>Sports</option><option>Music</option></select></label><label class="wide">Description<textarea name="description" required placeholder="Tell people what makes this event special…"></textarea></label><label>Venue<input name="venue" required placeholder="Main Auditorium"></label><label>Date<input type="date" name="event_date" required></label><label>Time<input type="time" name="event_time" required></label><label>Registration deadline<input type="date" name="registration_deadline"></label><label>Total seats<input type="number" name="total_seats" min="1" value="100" required></label><label>Ticket price (₹)<input type="number" name="price" min="0" value="0"></label><label>Banner image<select name="banner_image"><option value="event-tech.svg">Tech</option><option value="event-culture.svg">Culture</option><option value="event-workshop.svg">Workshop</option><option value="event-sports.svg">Sports</option></select></label></div></div>
+<button class="btn btn-primary">Publish event →</button> <a class="btn btn-ghost" href="{{ url_for('admin') }}">Cancel</a>
+</form></section>
+{% endblock %}
