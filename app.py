@@ -28,17 +28,16 @@ import os
 
 app = Flask(__name__)
 
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key")
+app.secret_key = os.environ.get(
+    "FLASK_SECRET_KEY",
+    "dev-secret-key-change-this"
+)
 
 
 # =========================================================
 # DATABASE CONFIGURATION
 # =========================================================
-#
-# Render PostgreSQL:
-# - Render provides DATABASE_URL for a linked PostgreSQL database.
-# - For local development, PG_* variables can be used.
-#
+
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 DB_CONFIG = {
@@ -55,29 +54,354 @@ DB_CONFIG = {
 # =========================================================
 
 def get_db_connection():
+
     if DATABASE_URL:
-        return psycopg2.connect(DATABASE_URL)
+
+        # Some PostgreSQL providers use postgres://
+        # while psycopg2 expects postgresql://
+        database_url = DATABASE_URL
+
+        if database_url.startswith("postgres://"):
+            database_url = database_url.replace(
+                "postgres://",
+                "postgresql://",
+                1
+            )
+
+        return psycopg2.connect(database_url)
 
     return psycopg2.connect(**DB_CONFIG)
 
 
 # =========================================================
-# TIME FILTER
+# DATABASE INITIALIZATION
 # =========================================================
-#
-# IMPORTANT:
-# MySQL TIME values are returned by PostgreSQL driver
-# as datetime.timedelta objects.
-#
-# Therefore we MUST NOT use:
-#
 
-#
-# in Jinja.
-#
-# Instead use:
-#
-# {{ event.event_time|time12 }}
+def init_db():
+
+    db = get_db_connection()
+    cursor = db.cursor()
+
+    try:
+
+        # -------------------------------------------------
+        # USERS
+        # -------------------------------------------------
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                phone VARCHAR(50),
+                password_hash TEXT NOT NULL,
+                role VARCHAR(50) NOT NULL DEFAULT 'user',
+                is_verified BOOLEAN NOT NULL DEFAULT TRUE,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+
+        # -------------------------------------------------
+        # CATEGORIES
+        # -------------------------------------------------
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS categories (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) UNIQUE NOT NULL
+            )
+        """)
+
+
+        # -------------------------------------------------
+        # EVENTS
+        # -------------------------------------------------
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS events (
+                id SERIAL PRIMARY KEY,
+
+                title VARCHAR(255) NOT NULL,
+
+                description TEXT,
+
+                category VARCHAR(255),
+
+                venue VARCHAR(500),
+
+                event_date DATE NOT NULL,
+
+                event_time TIME,
+
+                registration_deadline DATE,
+
+                total_seats INTEGER NOT NULL DEFAULT 0,
+
+                seats_available INTEGER NOT NULL DEFAULT 0,
+
+                price NUMERIC(12, 2) NOT NULL DEFAULT 0,
+
+                banner_image VARCHAR(500),
+
+                status VARCHAR(50) NOT NULL DEFAULT 'published',
+
+                organizer_id INTEGER,
+
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+
+        # -------------------------------------------------
+        # REGISTRATIONS
+        # -------------------------------------------------
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS registrations (
+                id SERIAL PRIMARY KEY,
+
+                user_id INTEGER NOT NULL,
+
+                event_id INTEGER NOT NULL,
+
+                registration_date TIMESTAMP NOT NULL
+                    DEFAULT CURRENT_TIMESTAMP,
+
+                ticket_id VARCHAR(100) UNIQUE NOT NULL,
+
+                attendance_status VARCHAR(50)
+                    DEFAULT 'absent',
+
+                status VARCHAR(50)
+                    DEFAULT 'confirmed'
+            )
+        """)
+
+
+        # -------------------------------------------------
+        # PAYMENTS
+        # -------------------------------------------------
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS payments (
+                id SERIAL PRIMARY KEY,
+
+                registration_id INTEGER NOT NULL,
+
+                amount NUMERIC(12, 2) NOT NULL DEFAULT 0,
+
+                payment_status VARCHAR(50)
+                    DEFAULT 'pending',
+
+                transaction_id VARCHAR(255),
+
+                payment_method VARCHAR(100),
+
+                created_at TIMESTAMP NOT NULL
+                    DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+
+        # -------------------------------------------------
+        # NOTIFICATIONS
+        # -------------------------------------------------
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS notifications (
+                id SERIAL PRIMARY KEY,
+
+                user_id INTEGER NOT NULL,
+
+                message TEXT NOT NULL,
+
+                type VARCHAR(100),
+
+                is_read BOOLEAN NOT NULL DEFAULT FALSE,
+
+                created_at TIMESTAMP NOT NULL
+                    DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+
+        # -------------------------------------------------
+        # FEEDBACK
+        # -------------------------------------------------
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS feedback (
+                id SERIAL PRIMARY KEY,
+
+                event_id INTEGER NOT NULL,
+
+                user_id INTEGER NOT NULL,
+
+                rating INTEGER NOT NULL,
+
+                comment TEXT,
+
+                created_at TIMESTAMP NOT NULL
+                    DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+
+        # -------------------------------------------------
+        # INDEXES
+        # -------------------------------------------------
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_events_date
+            ON events(event_date)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_events_status
+            ON events(status)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_registrations_event
+            ON registrations(event_id)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_registrations_user
+            ON registrations(user_id)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_feedback_event
+            ON feedback(event_id)
+        """)
+
+
+        # -------------------------------------------------
+        # DEFAULT CATEGORIES
+        # -------------------------------------------------
+
+        categories = [
+            "Technology",
+            "Business",
+            "Music",
+            "Sports",
+            "Education",
+            "Workshop",
+            "Conference",
+            "Entertainment"
+        ]
+
+        for category in categories:
+
+            cursor.execute(
+                """
+                INSERT INTO categories (name)
+                VALUES (%s)
+                ON CONFLICT (name) DO NOTHING
+                """,
+                (category,)
+            )
+
+
+        # -------------------------------------------------
+        # OPTIONAL ADMIN ACCOUNT
+        #
+        # Configure these in Render:
+        #
+        # ADMIN_EMAIL
+        # ADMIN_PASSWORD
+        # ADMIN_NAME
+        # -------------------------------------------------
+
+        admin_email = os.environ.get(
+            "ADMIN_EMAIL"
+        )
+
+        admin_password = os.environ.get(
+            "ADMIN_PASSWORD"
+        )
+
+        admin_name = os.environ.get(
+            "ADMIN_NAME",
+            "Eventora Admin"
+        )
+
+
+        if admin_email and admin_password:
+
+            cursor.execute(
+                """
+                SELECT id
+                FROM users
+                WHERE email = %s
+                """,
+                (admin_email.lower(),)
+            )
+
+            existing_admin = cursor.fetchone()
+
+
+            if not existing_admin:
+
+                password_hash = generate_password_hash(
+                    admin_password
+                )
+
+                cursor.execute(
+                    """
+                    INSERT INTO users
+                    (
+                        name,
+                        email,
+                        password_hash,
+                        role,
+                        is_verified
+                    )
+
+                    VALUES
+                    (
+                        %s,
+                        %s,
+                        %s,
+                        'admin',
+                        TRUE
+                    )
+                    """,
+                    (
+                        admin_name,
+                        admin_email.lower(),
+                        password_hash
+                    )
+                )
+
+
+        db.commit()
+
+        print("Database initialization completed successfully.")
+
+
+    except Exception as exc:
+
+        db.rollback()
+
+        print(
+            "DATABASE INITIALIZATION ERROR:",
+            exc
+        )
+
+        raise
+
+
+    finally:
+
+        cursor.close()
+        db.close()
+
+
+# =========================================================
+# TIME FILTER
 # =========================================================
 
 @app.template_filter("time12")
@@ -86,7 +410,6 @@ def time12(value):
     if value is None:
         return ""
 
-    # MySQL TIME -> datetime.timedelta
     if isinstance(value, timedelta):
 
         total_seconds = int(
@@ -101,7 +424,11 @@ def time12(value):
             total_seconds % 3600
         ) // 60
 
-        suffix = "AM" if hours < 12 else "PM"
+        suffix = (
+            "AM"
+            if hours < 12
+            else "PM"
+        )
 
         hour = hours % 12
 
@@ -110,12 +437,13 @@ def time12(value):
 
         return f"{hour:02d}:{minutes:02d} {suffix}"
 
-    # datetime.time / datetime.datetime
+
     if hasattr(value, "strftime"):
 
         return value.strftime(
             "%I:%M %p"
         )
+
 
     return str(value)
 
@@ -310,10 +638,10 @@ def events():
 
             query += """
                 AND (
-                    e.title LIKE %s
-                    OR e.description LIKE %s
-                    OR e.venue LIKE %s
-                    OR e.category LIKE %s
+                    e.title ILIKE %s
+                    OR e.description ILIKE %s
+                    OR e.venue ILIKE %s
+                    OR e.category ILIKE %s
                 )
             """
 
@@ -333,9 +661,7 @@ def events():
                 AND e.category = %s
             """
 
-            params.append(
-                category
-            )
+            params.append(category)
 
 
         if price == "free":
@@ -1086,6 +1412,7 @@ def register_event(event_id):
                 'absent',
                 'confirmed'
             )
+
             RETURNING id
             """,
             (
@@ -1097,7 +1424,10 @@ def register_event(event_id):
 
 
         registration_row = cursor.fetchone()
-        registration_id = registration_row['id']
+
+        registration_id = (
+            registration_row["id"]
+        )
 
 
         amount = float(
@@ -1157,7 +1487,9 @@ def register_event(event_id):
 
         new_seats = max(
             0,
-            event["total_seats"] - booked - 1
+            event["total_seats"]
+            - booked
+            - 1
         )
 
 
@@ -1618,6 +1950,9 @@ def chart_data():
         categories = cursor.fetchall()
 
 
+        # PostgreSQL version of the old
+        # MySQL YEAR() / MONTH() query
+
         cursor.execute(
             """
             SELECT
@@ -1625,6 +1960,14 @@ def chart_data():
                     e.event_date,
                     'Mon'
                 ) AS month,
+
+                EXTRACT(
+                    YEAR FROM e.event_date
+                )::INTEGER AS year,
+
+                EXTRACT(
+                    MONTH FROM e.event_date
+                )::INTEGER AS month_number,
 
                 COUNT(*) AS total
 
@@ -1637,12 +1980,13 @@ def chart_data():
                 r.status = 'confirmed'
 
             GROUP BY
-                YEAR(e.event_date),
-                MONTH(e.event_date)
+                EXTRACT(YEAR FROM e.event_date),
+                EXTRACT(MONTH FROM e.event_date),
+                TO_CHAR(e.event_date, 'Mon')
 
             ORDER BY
-                YEAR(e.event_date),
-                MONTH(e.event_date)
+                EXTRACT(YEAR FROM e.event_date),
+                EXTRACT(MONTH FROM e.event_date)
             """
         )
 
@@ -1817,12 +2161,66 @@ def feedback(event_id):
 
 
 # =========================================================
+# HEALTH CHECK
+# =========================================================
+
+@app.route("/health")
+def health():
+
+    try:
+
+        db = get_db_connection()
+
+        cursor = db.cursor()
+
+        cursor.execute("SELECT 1")
+
+        cursor.fetchone()
+
+        cursor.close()
+        db.close()
+
+        return jsonify({
+            "status": "ok",
+            "database": "connected"
+        })
+
+    except Exception as exc:
+
+        return jsonify({
+            "status": "error",
+            "database": str(exc)
+        }), 500
+
+
+# =========================================================
+# INITIALIZE DATABASE
+# =========================================================
+
+try:
+
+    init_db()
+
+except Exception as exc:
+
+    print(
+        "WARNING: Database initialization failed:",
+        exc
+    )
+
+
+# =========================================================
 # START APPLICATION
 # =========================================================
 
 if __name__ == "__main__":
 
-    port = int(os.environ.get("PORT", "5000"))
+    port = int(
+        os.environ.get(
+            "PORT",
+            "5000"
+        )
+    )
 
     app.run(
         host="0.0.0.0",
