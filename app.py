@@ -34,13 +34,13 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key")
 # DATABASE CONFIGURATION
 # =========================================================
 
-DB_CONFIG = {
-    "host": os.environ.get("MYSQL_HOST", "localhost"),
-    "port": int(os.environ.get("MYSQL_PORT", "3306")),
-    "user": os.environ.get("MYSQL_USER", "root"),
-    "password": os.environ.get("MYSQL_PASSWORD", "MySQL@12345"),
-    "database": os.environ.get("MYSQL_DATABASE", "eventora")
-}
+import os
+import psycopg2
+
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+def get_db_connection():
+    return psycopg2.connect(DATABASE_URL)
 
 
 # =========================================================
