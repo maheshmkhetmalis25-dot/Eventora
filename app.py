@@ -9,8 +9,9 @@ from flask import (
     jsonify
 )
 
-import mysql.connector
-from mysql.connector import Error
+import psycopg2
+from psycopg2 import Error
+from psycopg2.extras import RealDictCursor
 
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -33,31 +34,39 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key")
 # =========================================================
 # DATABASE CONFIGURATION
 # =========================================================
-
-import os
-import psycopg2
-
+#
+# Render PostgreSQL:
+# - Render provides DATABASE_URL for a linked PostgreSQL database.
+# - For local development, PG_* variables can be used.
+#
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
-def get_db_connection():
-    return psycopg2.connect(DATABASE_URL)
+DB_CONFIG = {
+    "host": os.environ.get("PGHOST", "localhost"),
+    "port": int(os.environ.get("PGPORT", "5432")),
+    "user": os.environ.get("PGUSER", "postgres"),
+    "password": os.environ.get("PGPASSWORD", ""),
+    "dbname": os.environ.get("PGDATABASE", "eventora")
+}
 
 
 # =========================================================
 # DATABASE CONNECTION
 # =========================================================
 
-
-
 def get_db_connection():
-    return mysql.connector.connect(**DB_CONFIG)
+    if DATABASE_URL:
+        return psycopg2.connect(DATABASE_URL)
+
+    return psycopg2.connect(**DB_CONFIG)
+
 
 # =========================================================
 # TIME FILTER
 # =========================================================
 #
 # IMPORTANT:
-# MySQL TIME values are returned by mysql.connector
+# MySQL TIME values are returned by PostgreSQL driver
 # as datetime.timedelta objects.
 #
 # Therefore we MUST NOT use:
@@ -186,7 +195,7 @@ def home():
     db = get_db_connection()
 
     cursor = db.cursor(
-        dictionary=True
+        cursor_factory=RealDictCursor
     )
 
     try:
@@ -213,7 +222,7 @@ def home():
 
             WHERE
                 e.status = 'published'
-                AND e.event_date >= CURDATE()
+                AND e.event_date >= CURRENT_DATE
 
             GROUP BY e.id
 
@@ -263,7 +272,7 @@ def events():
     db = get_db_connection()
 
     cursor = db.cursor(
-        dictionary=True
+        cursor_factory=RealDictCursor
     )
 
 
@@ -291,7 +300,7 @@ def events():
 
             WHERE
                 e.status = 'published'
-                AND e.event_date >= CURDATE()
+                AND e.event_date >= CURRENT_DATE
         """
 
         params = []
@@ -401,7 +410,7 @@ def event_detail(event_id):
     db = get_db_connection()
 
     cursor = db.cursor(
-        dictionary=True
+        cursor_factory=RealDictCursor
     )
 
 
@@ -720,7 +729,7 @@ def login():
         db = get_db_connection()
 
         cursor = db.cursor(
-            dictionary=True
+            cursor_factory=RealDictCursor
         )
 
 
@@ -840,7 +849,7 @@ def dashboard():
     db = get_db_connection()
 
     cursor = db.cursor(
-        dictionary=True
+        cursor_factory=RealDictCursor
     )
 
 
@@ -905,7 +914,7 @@ def register_event(event_id):
     db = get_db_connection()
 
     cursor = db.cursor(
-        dictionary=True
+        cursor_factory=RealDictCursor
     )
 
 
@@ -1077,6 +1086,7 @@ def register_event(event_id):
                 'absent',
                 'confirmed'
             )
+            RETURNING id
             """,
             (
                 session["user_id"],
@@ -1086,7 +1096,8 @@ def register_event(event_id):
         )
 
 
-        registration_id = cursor.lastrowid
+        registration_row = cursor.fetchone()
+        registration_id = registration_row['id']
 
 
         amount = float(
@@ -1236,7 +1247,7 @@ def admin():
     db = get_db_connection()
 
     cursor = db.cursor(
-        dictionary=True
+        cursor_factory=RealDictCursor
     )
 
 
@@ -1584,7 +1595,7 @@ def chart_data():
     db = get_db_connection()
 
     cursor = db.cursor(
-        dictionary=True
+        cursor_factory=RealDictCursor
     )
 
 
@@ -1610,9 +1621,9 @@ def chart_data():
         cursor.execute(
             """
             SELECT
-                DATE_FORMAT(
+                TO_CHAR(
                     e.event_date,
-                    '%b'
+                    'Mon'
                 ) AS month,
 
                 COUNT(*) AS total
@@ -1811,6 +1822,10 @@ def feedback(event_id):
 
 if __name__ == "__main__":
 
+    port = int(os.environ.get("PORT", "5000"))
+
     app.run(
-        debug=True
+        host="0.0.0.0",
+        port=port,
+        debug=False
     )
